@@ -1,7 +1,6 @@
-streamlit
-langchain-text-splitters
-langchain-google-genai
-langchain-community
-langchain-chroma
-youtube-transcript-api
+
+langchain_google_genai
+langchain_community
+langchain_chroma
+youtube_transcript_api 
 
