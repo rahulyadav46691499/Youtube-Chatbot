@@ -9,8 +9,11 @@ from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmb
 from langchain.prompts import PromptTemplate
 from langchain_chroma import Chroma
 
-# Load environment variables
-load_dotenv()
+# Try to load from Render secret path if it exists
+if os.path.exists("/etc/secrets/.env"):
+    load_dotenv("/etc/secrets/.env")
+else:
+    load_dotenv()  # Fallback to local .env
 
 # Page configuration
 st.set_page_config(
