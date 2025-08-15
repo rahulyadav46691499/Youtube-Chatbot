@@ -9,11 +9,8 @@ from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmb
 from langchain.prompts import PromptTemplate
 from langchain_chroma import Chroma
 
-# Try to load from Render secret path if it exists
-if os.path.exists("/etc/secrets/.env"):
-    load_dotenv("/etc/secrets/.env")
-else:
-    load_dotenv()  # Fallback to local .env
+
+load_dotenv()  
 
 # Page configuration
 st.set_page_config(
@@ -99,7 +96,7 @@ if 'current_video_id' not in st.session_state:
 def initialize_models():
     """Initialize the embedding model and LLM"""
     # Get API key from environment variable
-    google_api_key = os.getenv('GOOGLE_API_KEY')
+    google_api_key = 'AIzaSyB9isGlUQeeT31csmuoKR_YvljhPTWY2BI'
     
     if not google_api_key:
         st.error("❌ GOOGLE_API_KEY not found in environment variables. Please check your .env file.")
