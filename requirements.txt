@@ -1,9 +1,7 @@
 streamlit
-langchain
 langchain-text-splitters
 langchain-google-genai
 langchain-community
 langchain-chroma
-chromadb
 youtube-transcript-api
-google-generativeai
+
