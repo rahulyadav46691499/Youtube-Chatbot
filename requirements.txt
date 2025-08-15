@@ -2,5 +2,6 @@ streamlit
 langchain_google_genai
 langchain_community
 langchain_chroma
-youtube_transcript_api 
+youtube_transcript_api
+python-dotenv
 
