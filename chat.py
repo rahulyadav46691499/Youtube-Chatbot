@@ -98,10 +98,6 @@ def initialize_models():
     # Get API key from environment variable
     google_api_key = 'AIzaSyB9isGlUQeeT31csmuoKR_YvljhPTWY2BI'
     
-    if not google_api_key:
-        st.error("❌ GOOGLE_API_KEY not found in environment variables. Please check your .env file.")
-        st.stop()
-    
     embedding_model = GoogleGenerativeAIEmbeddings(
         google_api_key=google_api_key,
         model='models/embedding-001'
