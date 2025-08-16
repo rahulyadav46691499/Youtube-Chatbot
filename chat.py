@@ -171,7 +171,7 @@ def load_video_transcript(video_id, embedding_model, llm):
                 return None
         
         complete_transcript = '' 
-        for obj in transcripts.snippets:
+        for obj in transcripts:
             complete_transcript = complete_transcript + obj.text + ' '
         
         # Text splitting
