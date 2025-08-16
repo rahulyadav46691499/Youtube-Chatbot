@@ -156,19 +156,7 @@ def load_video_transcript(video_id, embedding_model, llm):
         # Initialize YouTubeTranscriptApi with custom session
         ytt_api = YouTubeTranscriptApi(http_client=http_client)
         
-        # Try manual transcript first (more accurate)
-        try:
-            transcripts = ytt_api.fetch(video_id, languages=['en', 'hi'])
-            print("Using manual transcript")
-        except Exception as e:
-            print(f"Manual transcript failed: {e}")
-            # Fallback to auto-generated transcript
-            try:
-                transcripts = ytt_api.fetch(video_id, languages=['en', 'hi'], auto_generated=True)
-                print("Using auto-generated transcript")
-            except Exception as e:
-                print(f"Auto-generated transcript failed: {e}")
-                return None, None, False, str(e)
+        transcripts = ytt_api.fetch(video_id, languages=['en', 'hi'])
         
         complete_transcript = '' 
         for obj in transcripts:
