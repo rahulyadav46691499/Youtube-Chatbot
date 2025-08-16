@@ -168,7 +168,7 @@ def load_video_transcript(video_id, embedding_model, llm):
                 print("Using auto-generated transcript")
             except Exception as e:
                 print(f"Auto-generated transcript failed: {e}")
-                return None
+                return None, None, False, str(e)
         
         complete_transcript = '' 
         for obj in transcripts:
