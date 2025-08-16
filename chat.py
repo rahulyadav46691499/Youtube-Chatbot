@@ -221,7 +221,12 @@ if 'current_video_id' not in st.session_state:
 def initialize_models():
     """Initialize the embedding model and LLM"""
     # Get API key from environment variable
-    google_api_key = 'AIzaSyB9isGlUQeeT31csmuoKR_YvljhPTWY2BI'
+    # Get API key from environment variable
+    google_api_key = os.getenv('GOOGLE_API_KEY')
+    
+    if not google_api_key:
+        st.error("❌ GOOGLE_API_KEY not found in environment variables. Please check your .env file.")
+        st.stop()
     
     embedding_model = GoogleGenerativeAIEmbeddings(
         google_api_key=google_api_key,
