@@ -1,8 +1,6 @@
 import streamlit as st
 import re
-import asyncio
 import os
-from requests import Session
 from dotenv import load_dotenv
 from youtube_transcript_api import YouTubeTranscriptApi
 from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -22,9 +20,57 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS for beautiful styling
+# Custom CSS for sticky input and scrollable chat
 st.markdown("""
 <style>
+    /* Main container adjustments */
+    .main .block-container {
+        padding-bottom: 120px; /* Space for sticky input */
+        max-height: calc(100vh - 120px);
+        overflow-y: auto;
+    }
+    
+    /* Sticky input container */
+    .sticky-input {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: white;
+        border-top: 2px solid #667eea;
+        padding: 1rem;
+        z-index: 1000;
+        box-shadow: 0 -4px 12px rgba(0,0,0,0.15);
+    }
+    
+    /* Chat container with scrolling */
+    .chat-container {
+        max-height: calc(100vh - 350px);
+        overflow-y: auto;
+        padding-right: 10px;
+        margin-bottom: 2rem;
+        scroll-behavior: smooth;
+    }
+    
+    /* Custom scrollbar */
+    .chat-container::-webkit-scrollbar {
+        width: 8px;
+    }
+    
+    .chat-container::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 10px;
+    }
+    
+    .chat-container::-webkit-scrollbar-thumb {
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        border-radius: 10px;
+    }
+    
+    .chat-container::-webkit-scrollbar-thumb:hover {
+        background: linear-gradient(135deg, #5a67d8, #6b46c1);
+    }
+
     .main-header {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         padding: 2rem;
@@ -39,6 +85,12 @@ st.markdown("""
         border-radius: 10px;
         margin: 1rem 0;
         box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        animation: fadeIn 0.5s ease-in;
+    }
+    
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
     }
     
     .user-message {
@@ -64,6 +116,14 @@ st.markdown("""
     
     .stTextInput > div > div > input {
         border-radius: 10px;
+        border: 2px solid #e2e8f0;
+        padding: 12px;
+        font-size: 16px;
+    }
+    
+    .stTextInput > div > div > input:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
     }
     
     .stButton > button {
@@ -73,13 +133,76 @@ st.markdown("""
         color: white;
         font-weight: bold;
         transition: all 0.3s ease;
+        padding: 12px 24px;
+        font-size: 16px;
     }
     
     .stButton > button:hover {
         transform: translateY(-2px);
         box-shadow: 0 4px 8px rgba(102, 126, 234, 0.3);
     }
+    
+    /* Hide default streamlit elements that might interfere */
+    .stDeployButton {
+        display: none;
+    }
+    
+    /* Adjust main content area */
+    section.main > div {
+        padding-bottom: 140px;
+    }
+    
+    /* Ensure sidebar doesn't cover sticky input */
+    .css-1d391kg {
+        z-index: 999;
+    }
+    
+    /* Mobile responsiveness for sticky input */
+    @media (max-width: 768px) {
+        .sticky-input {
+            padding: 0.5rem;
+        }
+        
+        .chat-container {
+            max-height: calc(100vh - 300px);
+        }
+    }
 </style>
+
+<script>
+// Auto-scroll chat to bottom when new messages appear
+function scrollChatToBottom() {
+    const chatContainer = document.querySelector('.chat-container');
+    if (chatContainer) {
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+}
+
+// Call scroll function after page loads and updates
+window.addEventListener('load', function() {
+    setTimeout(scrollChatToBottom, 100);
+});
+
+// Observer for chat updates
+const observer = new MutationObserver(function(mutations) {
+    mutations.forEach(function(mutation) {
+        if (mutation.type === 'childList') {
+            setTimeout(scrollChatToBottom, 100);
+        }
+    });
+});
+
+// Start observing when page loads
+window.addEventListener('load', function() {
+    const chatContainer = document.querySelector('.chat-container');
+    if (chatContainer) {
+        observer.observe(chatContainer, { 
+            childList: true, 
+            subtree: true 
+        });
+    }
+});
+</script>
 """, unsafe_allow_html=True)
 
 # Initialize session state
@@ -97,13 +220,6 @@ if 'current_video_id' not in st.session_state:
 @st.cache_resource
 def initialize_models():
     """Initialize the embedding model and LLM"""
-
-    # Ensure an event loop exists (important for gRPC async client)
-    try:
-        asyncio.get_running_loop()
-    except RuntimeError:
-        asyncio.set_event_loop(asyncio.new_event_loop())
-    
     # Get API key from environment variable
     google_api_key = 'AIzaSyB9isGlUQeeT31csmuoKR_YvljhPTWY2BI'
     
@@ -138,27 +254,18 @@ def extract_video_id(url):
     return match.group(1) if match else None
 
 def load_video_transcript(video_id, embedding_model, llm):
-    """Load and process YouTube video transcript - your existing code"""
+    """Load and process YouTube video transcript with enhanced headers"""
     try:
-        # Your existing transcript processing code
         # Create custom Session with enhanced headers
-        http_client = Session()
         
-        # Update headers following the official documentation approach
-        http_client.headers.update({
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                          "AppleWebKit/537.36 (KHTML, like Gecko) "
-                          "Chrome/119.0.0.0 Safari/537.36",
-            "Accept-Language": "en-US,en;q=0.9",
-            "Accept-Encoding": "gzip, deflate"  # As recommended in docs
-        })
         
-        # Initialize YouTubeTranscriptApi with custom session
-        ytt_api = YouTubeTranscriptApi(http_client=http_client)
+        # Create instance with custom session
+        ytt_api = YouTubeTranscriptApi()
         
+        # Fetch transcript
         transcripts = ytt_api.fetch(video_id, languages=['en', 'hi'])
         
-        complete_transcript = '' 
+        complete_transcript = ''
         for obj in transcripts:
             complete_transcript = complete_transcript + obj.text + ' '
         
@@ -281,34 +388,61 @@ def main():
         else:
             st.info("👆 Load a YouTube video to start chatting!")
     
-    # Main chat interface
+    # Main chat interface with scrollable container
     st.markdown("### 💬 Chat with the Video")
     
-    # Chat history
-    if st.session_state.chat_history:
-        for i, (user_msg, bot_msg) in enumerate(st.session_state.chat_history):
-            # User message
-            st.markdown(f"""
-            <div class="chat-message user-message">
-                <strong>You:</strong> {user_msg}
-            </div>
+    # Create main content container
+    main_container = st.container()
+    
+    with main_container:
+        # Create scrollable chat area
+        if st.session_state.chat_history:
+            # Start scrollable chat container
+            st.markdown('<div class="chat-container">', unsafe_allow_html=True)
+            
+            for i, (user_msg, bot_msg) in enumerate(st.session_state.chat_history):
+                # User message
+                st.markdown(f"""
+                <div class="chat-message user-message">
+                    <strong>You:</strong> {user_msg}
+                </div>
+                """, unsafe_allow_html=True)
+                
+                # Bot message
+                st.markdown(f"""
+                <div class="chat-message bot-message">
+                    <strong>🤖 Assistant:</strong> {bot_msg}
+                </div>
+                """, unsafe_allow_html=True)
+            
+            # End scrollable chat container
+            st.markdown('</div>', unsafe_allow_html=True)
+            
+            # Auto-scroll script
+            st.markdown("""
+            <script>
+                setTimeout(function() {
+                    const chatContainer = document.querySelector('.chat-container');
+                    if (chatContainer) {
+                        chatContainer.scrollTop = chatContainer.scrollHeight;
+                    }
+                }, 200);
+            </script>
             """, unsafe_allow_html=True)
             
-            # Bot message
-            st.markdown(f"""
-            <div class="chat-message bot-message">
-                <strong>🤖 Assistant:</strong> {bot_msg}
-            </div>
-            """, unsafe_allow_html=True)
-    else:
-        if st.session_state.video_loaded:
-            st.info("💭 Ask your first question about the video!")
         else:
-            st.info("📺 Load a YouTube video first to start asking questions.")
+            if st.session_state.video_loaded:
+                st.info("💭 Ask your first question about the video!")
+            else:
+                st.info("📺 Load a YouTube video first to start asking questions.")
     
-    # Question input (this replaces your user_input = input())
+    # Sticky input at the bottom - outside main container
+    st.markdown("""
+    <div class="sticky-input">
+    """, unsafe_allow_html=True)
+    
+    # Question input form (sticky at bottom)
     if st.session_state.video_loaded:
-        # Create a form for better UX
         with st.form(key="question_form", clear_on_submit=True):
             col1, col2 = st.columns([5, 1])
             
@@ -316,12 +450,12 @@ def main():
                 user_input = st.text_input(
                     "Your Question",
                     placeholder="Ask anything about the video...",
-                    label_visibility="collapsed"
+                    label_visibility="collapsed",
+                    key="sticky_input"
                 )
             
             with col2:
-                st.markdown("<br>", unsafe_allow_html=True)  # Add some spacing
-                submit_button = st.form_submit_button("Send", use_container_width=True)
+                submit_button = st.form_submit_button("Send 🚀", use_container_width=True)
             
             # Process question when form is submitted
             if submit_button and user_input:
@@ -356,8 +490,10 @@ def main():
                 )
             
             with col2:
-                st.markdown("<br>", unsafe_allow_html=True)
-                st.form_submit_button("Send", disabled=True, use_container_width=True)
+                st.form_submit_button("Send 🚀", disabled=True, use_container_width=True)
+    
+    # Close sticky input div
+    st.markdown('</div>', unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()
