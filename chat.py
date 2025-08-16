@@ -95,6 +95,13 @@ if 'current_video_id' not in st.session_state:
 @st.cache_resource
 def initialize_models():
     """Initialize the embedding model and LLM"""
+
+    # Ensure an event loop exists (important for gRPC async client)
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        asyncio.set_event_loop(asyncio.new_event_loop())
+    
     # Get API key from environment variable
     google_api_key = 'AIzaSyB9isGlUQeeT31csmuoKR_YvljhPTWY2BI'
     
