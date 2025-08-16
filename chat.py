@@ -2,6 +2,7 @@ import streamlit as st
 import re
 import asyncio
 import os
+from requests import Session
 from dotenv import load_dotenv
 from youtube_transcript_api import YouTubeTranscriptApi
 from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -140,10 +141,36 @@ def load_video_transcript(video_id, embedding_model, llm):
     """Load and process YouTube video transcript - your existing code"""
     try:
         # Your existing transcript processing code
-        ytt_api = YouTubeTranscriptApi()
-        transcripts = ytt_api.fetch(video_id, languages=['en', 'hi'])
+        # Create custom Session with enhanced headers
+        http_client = Session()
         
-        complete_transcript = ''
+        # Update headers following the official documentation approach
+        http_client.headers.update({
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                          "AppleWebKit/537.36 (KHTML, like Gecko) "
+                          "Chrome/119.0.0.0 Safari/537.36",
+            "Accept-Language": "en-US,en;q=0.9",
+            "Accept-Encoding": "gzip, deflate"  # As recommended in docs
+        })
+        
+        # Initialize YouTubeTranscriptApi with custom session
+        ytt_api = YouTubeTranscriptApi(http_client=http_client)
+        
+        # Try manual transcript first (more accurate)
+        try:
+            transcripts = ytt_api.fetch(video_id, languages=['en', 'hi'])
+            print("Using manual transcript")
+        except Exception as e:
+            print(f"Manual transcript failed: {e}")
+            # Fallback to auto-generated transcript
+            try:
+                transcripts = ytt_api.fetch(video_id, languages=['en', 'hi'], auto_generated=True)
+                print("Using auto-generated transcript")
+            except Exception as e:
+                print(f"Auto-generated transcript failed: {e}")
+                return None
+        
+        complete_transcript = '' 
         for obj in transcripts.snippets:
             complete_transcript = complete_transcript + obj.text + ' '
         
